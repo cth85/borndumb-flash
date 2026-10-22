@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- build: v2026.10.22-4 ios-tap-fix (cache-bust) -->
 <!--
 
 MINISTRY OF DUM // SUBJECT FILE 000-1031
@@ -178,7 +179,9 @@ function bdSound(ctx,out,t0,opt){opt=opt||{};t0=Math.max(t0||0,ctx.currentTime);
 (function(){
 var MSG="SPELLING ERROR DETECTED.";
 var preview=/[?&]preview=1/.test(location.search);
-var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var VERSION='2026.10.22-4';var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var DEBUG=/[?&]debug=1/.test(location.search),dbgBox=null,dbgLines=[];function dbg(m){if(!DEBUG)return;try{if(m!=null)dbgLines.push(((performance.now()/1000).toFixed(2))+'s '+m);if(dbgLines.length>14)dbgLines.shift();if(!dbgBox){dbgBox=document.createElement('pre');dbgBox.id='bddebug';dbgBox.style.cssText='position:fixed;left:4px;right:4px;bottom:4px;z-index:99999;max-height:38vh;overflow:auto;margin:0;padding:6px;background:rgba(0,0,0,.85);color:#0f0;border:1px solid #0f0;font:11px/1.35 monospace;white-space:pre-wrap;pointer-events:none';document.body.appendChild(dbgBox)}dbgBox.textContent='BD DEBUG v'+VERSION+' | reduce='+reduce+' | ctx='+(typeof ctx!=='undefined'&&ctx?ctx.state:'none')+'\n'+dbgLines.join('\n')}catch(e){}}
+if(DEBUG){addEventListener('error',function(e){dbg('ERR '+e.message+' @'+(e.lineno||'?'))});addEventListener('unhandledrejection',function(e){dbg('REJ '+(e.reason&&e.reason.message||e.reason))});setInterval(function(){dbg(null)},500);setTimeout(function(){dbg('debug on, UA '+navigator.userAgent.slice(0,90))},0)}
 var eye=document.getElementById('eye'),l1=document.getElementById('l1'),dom=document.getElementById('dom'),ap=document.getElementById('ap'),ret=document.getElementById('ret'),br=document.getElementById('br');
 var BAD='borndum<span class="b">b</span>.com',GOOD='<span class="ok" aria-label="borndum.com">'+document.getElementById('lwt').innerHTML+'<span>.com</span></span>';
 // reticle brackets (as in eye-reel-01: corners at 0.62R, arms 0.22R)
@@ -197,11 +200,12 @@ function loop(now){var t=now-t0;
  raf=requestAnimationFrame(loop)}
 function final(){eye.classList.add('on');l1.className='l1 hide';dom.innerHTML=GOOD;dom.className='dom show'}
 var AC=window.AudioContext||window.webkitAudioContext,ctx=null,bus=null,runStart=0,BODY=document.body;
-function ensure(){if(!AC)return null;if(!ctx){ctx=new AC();bus=ctx.createGain();bus.connect(ctx.destination)}return ctx}
+function ensure(){if(!AC)return null;if(!ctx){try{ctx=new AC();bus=ctx.createGain();bus.connect(ctx.destination);ctx.onstatechange=function(){dbg('ctx state -> '+ctx.state);if(ctx.state==='running')try{play()}catch(e){}}}catch(e){dbg('AC create failed '+e);ctx=null;return null}}return ctx}
+// audio is fire-and-forget: must be called synchronously inside a user gesture; never awaited, never gates visuals
+function unlockAudio(){try{if(!ensure())return;var sb=ctx.createBufferSource();sb.buffer=ctx.createBuffer(1,1,22050);sb.connect(ctx.destination);sb.start(0);dbg('silent buffer played, state='+ctx.state)}catch(e){dbg('unlock err '+e)}try{if(ctx.state!=='running'){var p=ctx.resume();if(p&&p.then)p.then(function(){dbg('resume resolved: '+ctx.state);try{play()}catch(e){}},function(e){dbg('resume rejected '+e)})}else play()}catch(e){dbg('resume err '+e)}}
 var lastPlayed=-1;function play(){if(!ctx||ctx.state!=='running'||lastPlayed===runStart)return;var el=(performance.now()-runStart)/1000;if(el>5.0)return;lastPlayed=runStart;try{bdSound(ctx,bus,Math.max(ctx.currentTime,ctx.currentTime-el+0.02))}catch(e){}}
 function run(){timers.forEach(clearTimeout);runStart=performance.now();timers=[];cancelAnimationFrame(raf);
  l1.textContent='';l1.className='l1';dom.className='dom';dom.innerHTML=BAD;eye.classList.remove('on','lock');BODY.classList.remove('crt','shake','loss');
- if(reduce){final();return}
  t0=performance.now();raf=requestAnimationFrame(loop);try{play()}catch(e){}
  at(60,function(){eye.classList.add('on')});
  var st=1750,per=45,n=MSG.length;
@@ -210,9 +214,9 @@ function run(){timers.forEach(clearTimeout);runStart=performance.now();timers=[]
  at(3050,function(){l1.classList.add('hide')});
  at(3350,function(){dom.className='dom show';eye.classList.add('lock')});
  at(3650,function(){dom.classList.add('strike')});
- at(4000,function(){BODY.classList.add('crt','shake');dom.classList.add('tear')});
- at(4450,function(){BODY.classList.add('loss')});
- at(4560,function(){BODY.classList.remove('loss');dom.innerHTML=GOOD;dom.className='dom show glitch'});
+ at(4000,function(){if(!reduce){BODY.classList.add('crt','shake');dom.classList.add('tear')}});
+ at(4450,function(){if(!reduce)BODY.classList.add('loss')});
+ at(4560,function(){BODY.classList.remove('loss');dom.innerHTML=GOOD;dom.className='dom show'+(reduce?'':' glitch')});
  at(4800,function(){BODY.classList.remove('crt','shake');eye.classList.remove('lock')});
  if(preview)at(7400,run);}
 var rp=document.getElementById('replay');
@@ -237,16 +241,16 @@ var gate=document.getElementById('gate'),mb=document.getElementById('mute'),ml=d
 function applyMute(){if(bus){try{bus.gain.setValueAtTime(muted?0:1,ctx.currentTime)}catch(e){bus.gain.value=muted?0:1}}mb.setAttribute('aria-pressed',muted?'true':'false');mb.setAttribute('aria-label',muted?'Unmute sound':'Mute sound');ml.textContent=muted?'SOUND OFF':'SOUND ON'}
 mb.addEventListener('click',function(e){e.stopPropagation();muted=!muted;if(ensure()&&ctx.state!=='running')ctx.resume();applyMute()});
 mb.addEventListener('keydown',function(e){e.stopPropagation()});
-function start(){if(started)return;started=true;gate.hidden=true;removeEventListener('keydown',onKey,true);try{applyMute()}catch(e){}try{run()}catch(e){}armRedirect()}
-async function enter(){if(started)return;try{if(!reduce&&ensure())await ctx.resume()}catch(e){}start();try{play()}catch(e){}}
+function start(){if(started)return;started=true;dbg('start()');gate.hidden=true;removeEventListener('keydown',onKey,true);try{applyMute()}catch(e){}try{run()}catch(e){}armRedirect()}
+function enter(){if(started)return;dbg('gate tap');start();unlockAudio()}
 function onKey(e){if(e.target===mb)return;e.preventDefault();enter()}
 gate.addEventListener('click',enter);
 function showGate(){if(started)return;gate.hidden=false;addEventListener('keydown',onKey,true);try{gate.focus({preventScroll:true})}catch(e){}}
-if(reduce||!ensure()){start()}else{
+if(!ensure()){start()}else{
  var dec=false;function decide(){if(dec)return;dec=true;if(ctx.state==='running')start();else showGate()}
  try{var pr=ctx.resume();if(pr&&pr.then)pr.then(decide,decide)}catch(e){}
  setTimeout(decide,350)}
-async function gesture(){try{if(!started||reduce||!ensure())return;if(ctx.state!=='running')await ctx.resume();play()}catch(e){}}
-addEventListener('pointerdown',gesture,{once:true});
+function gesture(){if(!started||(ctx&&ctx.state==='running'))return;dbg('gesture');unlockAudio()}
+['pointerdown','touchend','click'].forEach(function(e){addEventListener(e,gesture,true)});
 })();
 </script></body></html>
