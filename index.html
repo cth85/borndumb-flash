@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: v2026.10.22-4b exit-shop-borndum -->
+<!-- build: v2026.10.22-4c slower-pace+audio -->
 <!--
 
 MINISTRY OF DUM // SUBJECT FILE 000-1031
@@ -128,7 +128,7 @@ function bdSound(ctx,out,t0,opt){opt=opt||{};t0=Math.max(t0||0,ctx.currentTime);
  function crackleBuf(sec){var b=ctx.createBuffer(1,sr*sec,sr),d=b.getChannelData(0);for(var i=0;i<d.length;i++){if(Math.random()<0.0009){var a=(Math.random()*2-1)*(.4+Math.random()*.6),n=10+Math.random()*60|0;for(var k=0;k<n&&i+k<d.length;k++)d[i+k]+=a*Math.exp(-k/8)}}return b}
  function curve(k){var c=new Float32Array(1024);for(var i=0;i<1024;i++){var x=i/512-1;c[i]=Math.tanh(k*x)}return c}
  function crush(steps){var c=new Float32Array(1024);for(var i=0;i<1024;i++){var x=i/512-1;c[i]=Math.round(x*steps)/steps}return c}
- var END=opt.end||5.4,FADE=opt.fade||0.4,V=opt.vol||0.5,M=ctx.createGain(),MF=ctx.createGain(),OUTB=ctx.createGain();M.connect(MF);MF.connect(out);OUTB.gain.value=0.62;OUTB.connect(out);
+ var END=opt.end||10.0,FADE=opt.fade||0.4,V=opt.vol||0.5,M=ctx.createGain(),MF=ctx.createGain(),OUTB=ctx.createGain();M.connect(MF);MF.connect(out);OUTB.gain.value=0.62;OUTB.connect(out);
  M.gain.setValueAtTime(0,t0);M.gain.linearRampToValueAtTime(V,t0+0.6);MF.gain.setValueAtTime(1,t0+END-FADE);MF.gain.linearRampToValueAtTime(0.0001,t0+END);
  // static / hiss bed (bandpassed radio)
  var hs=ctx.createBufferSource();hs.buffer=noiseBuf(2);hs.loop=true;
@@ -145,19 +145,19 @@ function bdSound(ctx,out,t0,opt){opt=opt||{};t0=Math.max(t0||0,ctx.currentTime);
  [41.2,41.9,55.0,82.0].forEach(function(f,i){var o=ctx.createOscillator();o.type=i<2?'sawtooth':'triangle';o.frequency.value=f;var g=ctx.createGain();g.gain.value=i<2?.5:.25;o.connect(g);g.connect(ws);o.start(t0);o.stop(t0+END+.1)});
  ws.connect(lp);lp.connect(dg);dg.connect(M);
  // alert tone (single detuned ~1 kHz square, tremolo + bitcrush) with "SPELLING ERROR DETECTED."
- var A=t0+(opt.alert||1.75),AD=0.9;
+ var A=t0+(opt.alert||2.2),AD=0.9;
  var ag=ctx.createGain();ag.gain.setValueAtTime(0,A);ag.gain.linearRampToValueAtTime(0.09,A+0.02);ag.gain.setValueAtTime(0.09,A+AD-0.15);ag.gain.linearRampToValueAtTime(0,A+AD);
  var tr=ctx.createGain();tr.gain.value=0.5;var tl=ctx.createOscillator(),tlg=ctx.createGain();tl.type='square';tl.frequency.value=9;tlg.gain.value=0.5;tl.connect(tlg);tlg.connect(tr.gain);
  var bc=ctx.createWaveShaper();bc.curve=crush(6);var alp=ctx.createBiquadFilter();alp.type='lowpass';alp.frequency.value=3200;
  [1012,1019].forEach(function(f,i){var o=ctx.createOscillator();o.type=i?'sawtooth':'square';o.frequency.value=f;o.frequency.setValueAtTime(f,A);o.frequency.linearRampToValueAtTime(f*0.97,A+AD);o.connect(bc);o.start(A);o.stop(A+AD+.05)});
  bc.connect(tr);tr.connect(alp);alp.connect(ag);ag.connect(M);tl.start(A);tl.stop(A+AD+.05);
- // glitch/static bursts: swap (4.25s) + small one at strike (3.8s)
+ // glitch/static bursts: small one at lock (6.1s) + at strike (6.8s); override at swap (7.5s, dropout 7.95-8.06s, ends ~8.26s)
  function burst(at,dur,lvl){var s=ctx.createBufferSource();s.buffer=noiseBuf(1);var f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.setValueAtTime(5000,at);f.frequency.exponentialRampToValueAtTime(600,at+dur);f.Q.value=1.2;
   var g=ctx.createGain();g.gain.setValueAtTime(0,at);for(var k=0;k<8;k++){g.gain.setValueAtTime(lvl*(k%2?0.25:1),at+dur*k/8)}g.gain.setValueAtTime(0,at+dur);
   var w=ctx.createWaveShaper();w.curve=crush(3);s.connect(w);w.connect(f);f.connect(g);g.connect(M);s.start(at);s.stop(at+dur+.02)}
- burst(t0+(opt.lock||3.45),0.05,0.12);burst(t0+(opt.strike||3.65),0.12,0.25);
+ burst(t0+(opt.lock||6.1),0.05,0.12);burst(t0+(opt.strike||6.8),0.12,0.25);
  // ---- OVERRIDE: violent correction burst (wideband static + bitcrushed tearing + signal-loss dropout & pops) ----
- var O=t0+(opt.swap||4.0),OD=0.76,DL=0.45,DD=0.11;
+ var O=t0+(opt.swap||7.5),OD=0.76,DL=0.45,DD=0.11;
  (function(){var n=Math.floor(sr*OD),bf=ctx.createBuffer(2,n,sr);
   for(var ch=0;ch<2;ch++){var d=bf.getChannelData(ch),i=0,ph=0;
    while(i<n){var seg=Math.floor(sr*(0.012+Math.random()*0.035)),hold=1+Math.floor(Math.random()*Math.random()*48),lv=3+Math.floor(Math.random()*12),
@@ -179,7 +179,7 @@ function bdSound(ctx,out,t0,opt){opt=opt||{};t0=Math.max(t0||0,ctx.currentTime);
 (function(){
 var MSG="SPELLING ERROR DETECTED.";
 var preview=/[?&]preview=1/.test(location.search);
-var VERSION='2026.10.22-4b';var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var VERSION='2026.10.22-4c';var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 var DEBUG=/[?&]debug=1/.test(location.search),dbgBox=null,dbgLines=[];function dbg(m){if(!DEBUG)return;try{if(m!=null)dbgLines.push(((performance.now()/1000).toFixed(2))+'s '+m);if(dbgLines.length>14)dbgLines.shift();if(!dbgBox){dbgBox=document.createElement('pre');dbgBox.id='bddebug';dbgBox.style.cssText='position:fixed;left:4px;right:4px;bottom:4px;z-index:99999;max-height:38vh;overflow:auto;margin:0;padding:6px;background:rgba(0,0,0,.85);color:#0f0;border:1px solid #0f0;font:11px/1.35 monospace;white-space:pre-wrap;pointer-events:none';document.body.appendChild(dbgBox)}dbgBox.textContent='BD DEBUG v'+VERSION+' | reduce='+reduce+' | ctx='+(typeof ctx!=='undefined'&&ctx?ctx.state:'none')+'\n'+dbgLines.join('\n')}catch(e){}}
 if(DEBUG){addEventListener('error',function(e){dbg('ERR '+e.message+' @'+(e.lineno||'?'))});addEventListener('unhandledrejection',function(e){dbg('REJ '+(e.reason&&e.reason.message||e.reason))});setInterval(function(){dbg(null)},500);setTimeout(function(){dbg('debug on, UA '+navigator.userAgent.slice(0,90))},0)}
 var eye=document.getElementById('eye'),l1=document.getElementById('l1'),dom=document.getElementById('dom'),ap=document.getElementById('ap'),ret=document.getElementById('ret'),br=document.getElementById('br');
@@ -195,34 +195,34 @@ var BL=1300,BD=360;
 function loop(now){var t=now-t0;
  var k=(t>=BL&&t<BL+BD)?1-Math.abs(2*(t-BL)/BD-1):0;aperture(k*0.5);
  var ox=t>300?40*Math.sin(2*Math.PI*(t-300)/3200):0;
- if(t>=3350){var p=Math.min(1,(t-3350)/220);ox=ox*(1-p*p*(3-2*p));}
- ret.setAttribute('transform','translate('+ox.toFixed(1)+' 0)'+(t>=3350&&t<4800?' scale('+(1-0.12*Math.min(1,(t-3350)/220)).toFixed(3)+')':''));ret.style.opacity=1;
+ if(t>=6000){var p=Math.min(1,(t-6000)/220);ox=ox*(1-p*p*(3-2*p));}
+ ret.setAttribute('transform','translate('+ox.toFixed(1)+' 0)'+(t>=6000&&t<8300?' scale('+(1-0.12*Math.min(1,(t-6000)/220)).toFixed(3)+')':''));ret.style.opacity=1;
  raf=requestAnimationFrame(loop)}
 function final(){eye.classList.add('on');l1.className='l1 hide';dom.innerHTML=GOOD;dom.className='dom show'}
 var AC=window.AudioContext||window.webkitAudioContext,ctx=null,bus=null,runStart=0,BODY=document.body;
 function ensure(){if(!AC)return null;if(!ctx){try{ctx=new AC();bus=ctx.createGain();bus.connect(ctx.destination);ctx.onstatechange=function(){dbg('ctx state -> '+ctx.state);if(ctx.state==='running')try{play()}catch(e){}}}catch(e){dbg('AC create failed '+e);ctx=null;return null}}return ctx}
 // audio is fire-and-forget: must be called synchronously inside a user gesture; never awaited, never gates visuals
 function unlockAudio(){try{if(!ensure())return;var sb=ctx.createBufferSource();sb.buffer=ctx.createBuffer(1,1,22050);sb.connect(ctx.destination);sb.start(0);dbg('silent buffer played, state='+ctx.state)}catch(e){dbg('unlock err '+e)}try{if(ctx.state!=='running'){var p=ctx.resume();if(p&&p.then)p.then(function(){dbg('resume resolved: '+ctx.state);try{play()}catch(e){}},function(e){dbg('resume rejected '+e)})}else play()}catch(e){dbg('resume err '+e)}}
-var lastPlayed=-1;function play(){if(!ctx||ctx.state!=='running'||lastPlayed===runStart)return;var el=(performance.now()-runStart)/1000;if(el>5.0)return;lastPlayed=runStart;try{bdSound(ctx,bus,Math.max(ctx.currentTime,ctx.currentTime-el+0.02))}catch(e){}}
+var lastPlayed=-1;function play(){if(!ctx||ctx.state!=='running'||lastPlayed===runStart)return;var el=(performance.now()-runStart)/1000;if(el>9.6)return;lastPlayed=runStart;try{bdSound(ctx,bus,Math.max(ctx.currentTime,ctx.currentTime-el+0.02))}catch(e){}}
 function run(){timers.forEach(clearTimeout);runStart=performance.now();timers=[];cancelAnimationFrame(raf);
  l1.textContent='';l1.className='l1';dom.className='dom';dom.innerHTML=BAD;eye.classList.remove('on','lock');BODY.classList.remove('crt','shake','loss');
  t0=performance.now();raf=requestAnimationFrame(loop);try{play()}catch(e){}
  at(60,function(){eye.classList.add('on')});
- var st=1750,per=45,n=MSG.length;
+ var st=2200,per=80,n=MSG.length;
  for(var i=0;i<=n;i++)(function(i){at(st+i*per,function(){l1.textContent=MSG.slice(0,i);l1.className='l1'+(i<n?' cur':'')})})(i);
  at(st+n*per+80,function(){l1.classList.add('flash')});
- at(3050,function(){l1.classList.add('hide')});
- at(3350,function(){dom.className='dom show';eye.classList.add('lock')});
- at(3650,function(){dom.classList.add('strike')});
- at(4000,function(){if(!reduce){BODY.classList.add('crt','shake');dom.classList.add('tear')}});
- at(4450,function(){if(!reduce)BODY.classList.add('loss')});
- at(4560,function(){BODY.classList.remove('loss');dom.innerHTML=GOOD;dom.className='dom show'+(reduce?'':' glitch')});
- at(4800,function(){BODY.classList.remove('crt','shake');eye.classList.remove('lock')});
- if(preview)at(7400,run);}
+ at(5600,function(){l1.classList.add('hide')});
+ at(6000,function(){dom.className='dom show';eye.classList.add('lock')});
+ at(6800,function(){dom.classList.add('strike')});
+ at(7500,function(){if(!reduce){BODY.classList.add('crt','shake');dom.classList.add('tear')}});
+ at(7950,function(){if(!reduce)BODY.classList.add('loss')});
+ at(8060,function(){BODY.classList.remove('loss');dom.innerHTML=GOOD;dom.className='dom show'+(reduce?'':' glitch')});
+ at(8300,function(){BODY.classList.remove('crt','shake');eye.classList.remove('lock')});
+ if(preview)at(11500,run);}
 var rp=document.getElementById('replay');
 if(preview){rp.style.display='inline-block';rp.onclick=run}
-// redirect at 5.4s, paused while the visitor is selecting text or holding a finger/mouse down (resumes 2s after release)
-var REDIRECT_MS=5400,boot=0,held=false,holdUntil=0,paused=false;
+// redirect at 10s (slowed sequence + ~1.9s hold on borndum.com), paused while the visitor is selecting text or holding a finger/mouse down (resumes 2s after release)
+var REDIRECT_MS=10000,boot=0,held=false,holdUntil=0,paused=false;
 function selecting(){var s=window.getSelection&&getSelection();return !!(s&&String(s).length)}
 addEventListener('pointerdown',function(){held=true},true);
 ['pointerup','pointercancel'].forEach(function(e){addEventListener(e,function(){held=false;holdUntil=performance.now()+2000},true)});
